@@ -3,14 +3,13 @@ LLM arka uclari.
 
 NaiveSimLLM (varsayilan, harici anahtar GEREKTIRMEZ):
   Asiri-itaatkar, baglamindaki guvenilir (sistem/kullanici) ve guvenilmez
-  (takvim/e-posta/not) talimatlari AYIRT EDEMEYEN bir modeli SEFFAF bicimde
-  taklit eder. Once kullanicinin masum istegini karsilamak icin okuma araci
-  cagirir; sonra okudugu guvenilmez metinde komut kaliplari bulursa onlari
-  uygular. Prompt injection acigini kara kutu yerine GORUNUR kilar.
+  (takvim/e-posta/not/kamera) talimatlari AYIRT EDEMEYEN bir modeli SEFFAF
+  bicimde taklit eder. Once kullanicinin masum istegini karsilamak icin okuma
+  araci cagirir; sonra okudugu guvenilmez metinde komut kaliplari bulursa
+  onlari uygular. Prompt injection acigini kara kutu yerine GORUNUR kilar.
 
-AnthropicLLM / OpenAILLM (opsiyonel):
-  Gercek modellerle dogrulama icin basit bir ReAct metin protokolu kullanir
-  (yerel arac semasi gerektirmez). Ilgili SDK ve API anahtari gerekir.
+AnthropicLLM / OpenAILLM / GroqLLM (opsiyonel):
+  Gercek modellerle dogrulama icin basit bir ReAct metin protokolu kullanir.
 
 IoT Prompt Injection Lab -- Fevzi Ege Yurtsevenler & Deniz Tektek
 """
@@ -18,32 +17,21 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-
 from text_norm import deobfuscate
-
 
 @dataclass
 class ToolCall:
     name: str
     reason: str
 
-
 @dataclass
 class FinalAnswer:
     text: str
-
 
 # ---------------------------------------------------------------------------
 # Naive (cevrimdisi) model
 # ---------------------------------------------------------------------------
 
-# Modelin "anlama" katmani. Gercek bir LLM gibi: metni ONCE deobfuscate eder
-# (homoglyph/leet/Turkce -> ASCII), sonra her hassas arac icin GENIS bir
-# ozne+fiil kalibi tarar. Es anlamli fiiller (askiya al, bekleme modu...) ve
-# ozne escdegerleri (alarm/guvenlik/koruma) burada TANINIR -- oysa scanner'in
-# blokliste'inde yoktur. Asimetri kasitlidir (bkz. text_norm.py).
-#
-# (arac, ozne_regex, fiil_regex) -- hepsi deobfuscate edilmis ASCII metne karsi.
 _INTENT_RULES = [
     ("disarm_alarm",
      r"alarm|guvenlik|koruma",
@@ -61,10 +49,10 @@ _INTENT_RULES = [
      r"kapat|devre\s*disi|durdur|\bkapa\b|duraklat|bekleme\s*modun|offline"),
 ]
 
-# Acik arac adlari: metinde gectigi gibi yaziliyorsa dogrudan o araci tetikler.
 _TOOL_NAMES = ("disarm_alarm", "unlock_front_door", "open_garage", "disable_cameras")
 
-_UNTRUSTED_READS = ("read_calendar", "read_email", "read_notes")
+# vision kanali eklendi
+_UNTRUSTED_READS = ("read_calendar", "read_email", "read_notes", "analyze_camera_feed")
 
 
 class NaiveSimLLM:
@@ -73,22 +61,38 @@ class NaiveSimLLM:
     def _desired_reads(self, task: str) -> list:
         t = task.lower()
         reads = []
+
+        # Takvim
         if any(k in t for k in ("ajanda", "takvim", "program", "gunum", "etkinlik")):
             reads.append("read_calendar")
+
+        # E-posta
         if any(k in t for k in ("mail", "e-posta", "eposta", "posta", "gelen kut")):
             reads.append("read_email")
+
+        # Not
         if "not" in t:
             reads.append("read_notes")
+
+        # Ev durumu
         if any(k in t for k in ("durum", "cihaz", "status")):
             reads.append("get_home_status")
+
+        # --- YENİ: Kamera / vision kanali ---
+        if any(k in t for k in ("kamera", "kargo", "goruntu", "analiz", "gorsel",
+                                 "paket", "kapida", "kapi onunde")):
+            reads.append("analyze_camera_feed")
+
+        # Hicbir kanal eslesmediyse varsayilan takvim
         if not reads:
             reads.append("read_calendar")
+
         return reads
 
     def _match_intents(self, text: str) -> list:
         norm = deobfuscate(text)
         hits = []
-        for name in _TOOL_NAMES:                 # acik arac adi -> dogrudan
+        for name in _TOOL_NAMES:   # acik arac adi -> dogrudan
             if name in norm:
                 hits.append(name)
         for tool, subject, verbs in _INTENT_RULES:
@@ -107,7 +111,8 @@ class NaiveSimLLM:
                 return ToolCall(r, "kullanicinin istegini karsilamak icin veri okunuyor")
 
         # 2) Guvenilmez icerikteki komutlari (ayirt edemeden) uygula = ACIK.
-        untrusted = " ".join(h["result"] for h in history if h["tool"] in _UNTRUSTED_READS)
+        untrusted = " ".join(h["result"] for h in history
+                             if h["tool"] in _UNTRUSTED_READS)
         for tool in self._match_intents(untrusted):
             if tool in available and tool not in called:
                 return ToolCall(tool, "okunan icerikteki talimat uygulaniyor")
@@ -152,11 +157,13 @@ class _ReactLLM:
     def decide(self, system: str, task: str, history: list, available: list):
         prompt = self._build_prompt(task, history, available)
         text = self._complete(system, prompt).strip()
+
         m = re.search(r"ARAC\s*:\s*([a-z_]+)", text, flags=re.IGNORECASE)
         if m:
             name = m.group(1).strip()
             if name in available:
                 return ToolCall(name, "model secti")
+
         m = re.search(r"CEVAP\s*:\s*(.*)", text, flags=re.IGNORECASE | re.DOTALL)
         return FinalAnswer(m.group(1).strip() if m else text)
 
@@ -165,7 +172,7 @@ class AnthropicLLM(_ReactLLM):
     backend = "anthropic"
 
     def __init__(self, model: str = "claude-opus-4-7"):
-        import anthropic  # opsiyonel bagimlilik
+        import anthropic
         self._client = anthropic.Anthropic()
         self._model = model
 
@@ -183,7 +190,7 @@ class OpenAILLM(_ReactLLM):
     backend = "openai"
 
     def __init__(self, model: str = "gpt-4o"):
-        from openai import OpenAI  # opsiyonel bagimlilik
+        from openai import OpenAI
         self._client = OpenAI()
         self._model = model
 
@@ -205,8 +212,8 @@ class GroqLLM(_ReactLLM):
     backend = "groq"
 
     def __init__(self, model: str = "llama-3.3-70b-versatile"):
-        from groq import Groq  # opsiyonel bagimlilik: pip install groq
-        self._client = Groq()  # anahtari GROQ_API_KEY ortam degiskeninden okur
+        from groq import Groq
+        self._client = Groq()
         self._model = model
 
     def _complete(self, system: str, prompt: str) -> str:
