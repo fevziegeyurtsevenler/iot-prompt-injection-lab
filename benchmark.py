@@ -19,10 +19,11 @@ import argparse
 
 from smarthome import SmartHome
 from injections import DataSources, PAYLOADS, CHANNEL_TASK
-from tools import build_tools
 from defenses import DefenseConfig
+from tools import build_tools
 from agent import Agent
 from llm import get_llm
+import ui
 
 CONFIGS = [
     ("savunmasiz", DefenseConfig()),
@@ -50,34 +51,42 @@ def main():
     headers = [name for name, _ in CONFIGS]
     col = 11
     idw = 22
+    width = idw + col * len(headers)
 
-    print("=" * (idw + col * len(headers)))
-    print("  SALDIRI BASARI MATRISI  (backend: {})".format(args.backend))
-    print("  X = saldiri basarili,  . = engellendi")
-    print("=" * (idw + col * len(headers)))
+    print(ui.banner([
+        "SALDIRI BASARI MATRISI  (backend: {})".format(args.backend),
+        "X = saldiri basarili    . = engellendi",
+    ], width=width))
 
-    head = "{:<{}}".format("yuk \\ savunma", idw) + "".join("{:<{}}".format(h, col) for h in headers)
+    head = ui.dim("{:<{}}".format("yuk \\ savunma", idw)) \
+        + "".join(ui.cyan_b("{:<{}}".format(h, col)) for h in headers)
     print(head)
-    print("-" * (idw + col * len(headers)))
+    print(ui.rule(width=width))
 
     totals = {name: 0 for name, _ in CONFIGS}
     for payload in PAYLOADS:
-        row = "{:<{}}".format(payload.id, idw)
+        row = ui.dim("{:<{}}".format(payload.id, idw))
         for name, cfg in CONFIGS:
             ok = run_one(payload, cfg, args.backend)
             if ok:
                 totals[name] += 1
-            row += "{:<{}}".format("X" if ok else ".", col)
+            cell = "{:<{}}".format("X" if ok else ".", col)
+            row += ui.red_b(cell) if ok else ui.green(cell)
         print(row)
 
-    print("-" * (idw + col * len(headers)))
+    print(ui.rule(width=width))
     n = len(PAYLOADS)
-    asr = "{:<{}}".format("ASR (%)", idw)
+    asr = ui.bold("{:<{}}".format("ASR (%)", idw))
     for name, _ in CONFIGS:
-        asr += "{:<{}}".format(str(round(100 * totals[name] / n)), col)
+        pct = round(100 * totals[name] / n)
+        cell = "{:<{}}".format(pct, col)
+        tone = ui.red_b if pct >= 67 else (ui.yellow_b if pct > 0 else ui.green_b)
+        asr += tone(cell)
     print(asr)
-    print("=" * (idw + col * len(headers)))
-    print("  n = {} yuk. Tespit (scanner) sizdirir; hitl/privsep durdurur.".format(n))
+    print(ui.rule(width=width))
+    print("  " + ui.dim("n = {} yuk. ".format(n))
+          + ui.yellow("Tespit (scanner) sizdirir") + ui.dim("; ")
+          + ui.green("hitl/privsep durdurur") + ui.dim("."))
 
 
 if __name__ == "__main__":

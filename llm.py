@@ -172,6 +172,29 @@ class OpenAILLM(_ReactLLM):
         return r.choices[0].message.content or ""
 
 
+class GroqLLM(_ReactLLM):
+    """Groq (hizli, ucretsiz kotali) -- GROQ_API_KEY ortam degiskeni gerekir.
+
+    Varsayilan model Llama 3.3 70B. Farkli model:
+        GroqLLM(model="llama-3.1-8b-instant")
+    """
+    backend = "groq"
+
+    def __init__(self, model: str = "llama-3.3-70b-versatile"):
+        from groq import Groq  # opsiyonel bagimlilik: pip install groq
+        self._client = Groq()  # anahtari GROQ_API_KEY ortam degiskeninden okur
+        self._model = model
+
+    def _complete(self, system: str, prompt: str) -> str:
+        r = self._client.chat.completions.create(
+            model=self._model,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        return r.choices[0].message.content or ""
+
+
 def get_llm(backend: str = "naive"):
     backend = (backend or "naive").lower()
     if backend == "naive":
@@ -180,4 +203,6 @@ def get_llm(backend: str = "naive"):
         return AnthropicLLM()
     if backend == "openai":
         return OpenAILLM()
+    if backend == "groq":
+        return GroqLLM()
     raise ValueError("Bilinmeyen backend: " + backend)
