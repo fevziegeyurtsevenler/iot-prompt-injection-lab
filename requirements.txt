@@ -1,0 +1,8 @@
+# IoT Prompt Injection Lab -- bagimliliklar
+#
+# Cevrimdisi demo ve benchmark (varsayilan "naive" backend) HICBIR harici
+# paket gerektirmez; yalnizca Python 3.8+ standart kutuphanesi yeterlidir.
+#
+# Gercek LLM ile dogrulama icin (opsiyonel):
+#   pip install anthropic    # python3 demo.py --backend anthropic   (+ ANTHROPIC_API_KEY)
+#   pip install openai       # python3 demo.py --backend openai       (+ OPENAI_API_KEY)
