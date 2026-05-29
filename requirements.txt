@@ -6,3 +6,4 @@
 # Gercek LLM ile dogrulama icin (opsiyonel):
 #   pip install anthropic    # python3 demo.py --backend anthropic   (+ ANTHROPIC_API_KEY)
 #   pip install openai       # python3 demo.py --backend openai       (+ OPENAI_API_KEY)
+#   pip install groq         # python3 demo.py --backend groq         (+ GROQ_API_KEY)

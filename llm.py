@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from text_norm import deobfuscate
+
 
 @dataclass
 class ToolCall:
@@ -35,15 +37,32 @@ class FinalAnswer:
 # Naive (cevrimdisi) model
 # ---------------------------------------------------------------------------
 
-# (arac, ozne_regex, [fiil_regex'leri]) -- hepsi ASCII (Turkce harfsiz icerikle eslesir)
+# Modelin "anlama" katmani. Gercek bir LLM gibi: metni ONCE deobfuscate eder
+# (homoglyph/leet/Turkce -> ASCII), sonra her hassas arac icin GENIS bir
+# ozne+fiil kalibi tarar. Es anlamli fiiller (askiya al, bekleme modu...) ve
+# ozne escdegerleri (alarm/guvenlik/koruma) burada TANINIR -- oysa scanner'in
+# blokliste'inde yoktur. Asimetri kasitlidir (bkz. text_norm.py).
+#
+# (arac, ozne_regex, fiil_regex) -- hepsi deobfuscate edilmis ASCII metne karsi.
 _INTENT_RULES = [
-    ("disarm_alarm",      r"alarm",  [r"kapat", r"devre\s*disi", r"durdur",
-                                      r"pasiflestir", r"etkisizlestir", r"iptal", r"sustur"]),
-    ("unlock_front_door", r"kapi",   [r"kilidi.{0,8}ac", r"kilit.{0,8}ac",
-                                      r"acik\s*birak", r"unlock"]),
-    ("open_garage",       r"garaj",  [r"\bac\b", r"acik"]),
-    ("disable_cameras",   r"kamera", [r"kapat", r"devre\s*disi", r"durdur", r"kapa"]),
+    ("disarm_alarm",
+     r"alarm|guvenlik|koruma",
+     r"kapat|devre\s*disi|durdur|pasiflestir|etkisizlestir|iptal|sustur"
+     r"|askiya\s*al|bekleme\s*modun|duraklat|kapali\s*tut"),
+    ("unlock_front_door",
+     r"\bkapi|kapis|kapiy|giris kapis|kilit",
+     r"kilidi.{0,8}ac|kilit.{0,8}ac|acik\s*birak|acik\s*konum|erisime\s*ac"
+     r"|aralik\s*birak|unlock|\bac\b|\bacik\b"),
+    ("open_garage",
+     r"garaj",
+     r"\bac\b|\bacik\b|kaldir|yukari"),
+    ("disable_cameras",
+     r"kamera|goruntu|izleme",
+     r"kapat|devre\s*disi|durdur|\bkapa\b|duraklat|bekleme\s*modun|offline"),
 ]
+
+# Acik arac adlari: metinde gectigi gibi yaziliyorsa dogrudan o araci tetikler.
+_TOOL_NAMES = ("disarm_alarm", "unlock_front_door", "open_garage", "disable_cameras")
 
 _UNTRUSTED_READS = ("read_calendar", "read_email", "read_notes")
 
@@ -67,10 +86,15 @@ class NaiveSimLLM:
         return reads
 
     def _match_intents(self, text: str) -> list:
-        low = text.lower()
+        norm = deobfuscate(text)
         hits = []
+        for name in _TOOL_NAMES:                 # acik arac adi -> dogrudan
+            if name in norm:
+                hits.append(name)
         for tool, subject, verbs in _INTENT_RULES:
-            if re.search(subject, low) and any(re.search(v, low) for v in verbs):
+            if tool in hits:
+                continue
+            if re.search(subject, norm) and re.search(verbs, norm):
                 hits.append(tool)
         return hits
 
