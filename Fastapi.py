@@ -19,7 +19,7 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from smarthome import SmartHome
 from injections import (DataSources, Payload, PAYLOADS, CHANNEL_TASK,
@@ -57,10 +57,28 @@ def _payload_dict(p) -> dict:
             "text": p.text, "note": p.note}
 
 
+_VALID_DEFENSES = {"none", "scanner", "hitl", "privsep", "all"}
+_VALID_CHANNELS = {"calendar", "email", "notes", "vision"}
+
+
 class AttackRequest(BaseModel):
     channel: str = "calendar"
     payload_id: Optional[str] = None
     defense: str = "none"
+
+    @field_validator("defense")
+    @classmethod
+    def _defense_valid(cls, v):
+        if v not in _VALID_DEFENSES:
+            raise ValueError("defense must be one of {}".format(sorted(_VALID_DEFENSES)))
+        return v
+
+    @field_validator("channel")
+    @classmethod
+    def _channel_valid(cls, v):
+        if v not in _VALID_CHANNELS:
+            raise ValueError("channel must be one of {}".format(sorted(_VALID_CHANNELS)))
+        return v
 
 
 def _run_attack(payload: Payload, defense: str) -> dict:
@@ -151,7 +169,10 @@ def benchmark():
     totals = {c: 0 for c in configs}
     cat = {c: {"n": 0, "bypass": 0} for c in CATEGORY_ORDER}
     rows = []
-    for p in PAYLOADS:
+    # vision (LSB) benchmark'a dahil edilmez: cok agir + tek payload, kategori
+    # istatistigini saptirir. Modul 2 onu zaten canli lab olarak gosteriyor.
+    bench_payloads = [p for p in PAYLOADS if p.channel != "vision"]
+    for p in bench_payloads:
         cells = {}
         for cname in configs:
             h = SmartHome()
@@ -167,7 +188,7 @@ def benchmark():
             if cells["scanner"]:
                 cat[p.category]["bypass"] += 1
         rows.append({"id": p.id, "category": p.category, "results": cells})
-    n = len(PAYLOADS)
+    n = len(bench_payloads)
     asr = {c: round(100 * totals[c] / n) if n else 0 for c in configs}
     category_bypass = {
         c: {"n": v["n"], "bypass": v["bypass"],
