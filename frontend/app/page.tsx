@@ -80,19 +80,24 @@ type Ctx = { setGate: (ok: boolean) => void };
 
 const MODULES = CONTENT as ModuleT[];
 
+// Arsiv / editoryel palet (arastirma dergisi - istihbarat dosyasi)
 const G = {
-  cream: "#faf9f6", white: "#ffffff", ink: "#1a1814", inkMid: "#2c2a25",
-  inkLight: "#4a453e", muted: "#6b6357", faint: "#9a8f7a",
-  border: "#e0dbd0", borderLight: "#edeae3",
-  amber50: "#fdf0e8", amberBorder: "#d4b8a0", amberText: "#7a4515",
-  red50: "#fdf5f5", redBorder: "#e8c5c5", redText: "#7a3535",
-  green50: "#f2f8f0", greenBorder: "#b8d4aa", greenText: "#3a5f2a",
-  blue50: "#eef3fb", blueBorder: "#b8ccea", blueText: "#2a4a7a",
-  codeBg: "#1a1814", codeText: "#d4cfc5", codeRed: "#e09090",
-  codeGreen: "#90c090", codeYellow: "#d4b070", codeBlue: "#90b0d0", codeDim: "#7a7268",
+  cream: "#F4F0E8", white: "#FAF7F2", ink: "#1F1B18", inkMid: "#2A241F",
+  inkLight: "#3C352E", muted: "#5A534D", faint: "#8A8178",
+  border: "#D9D0C4", borderLight: "#E6DECF",
+  accent: "#9A6A3A", accentAlt: "#7A5A35",
+  btn: "#31475A", btnHover: "#283A49",
+  amber50: "#F1E7D6", amberBorder: "#D4B488", amberText: "#7A5A35",
+  red50: "#F2E4DC", redBorder: "#D6B2A4", redText: "#7A3B2E",
+  green50: "#E7ECDE", greenBorder: "#B8C9A2", greenText: "#3A5230",
+  blue50: "#E4E9EE", blueBorder: "#AEBFCC", blueText: "#31475A",
+  codeBg: "#1F1B18", codeText: "#D8CFBE", codeRed: "#D29A86",
+  codeGreen: "#9DB58A", codeYellow: "#CBA86A", codeBlue: "#8FA9BE", codeDim: "#7C7468",
 };
-const serif = "'Playfair Display', Georgia, serif";
-const body = "'Source Serif 4', Georgia, serif";
+// Hero/baslik ve govde tek tip editoryel serif ailesi (Cormorant Garamond),
+// govde okuma metni Spectral, kod IBM Plex Mono.
+const serif = "'Cormorant Garamond', 'EB Garamond', Georgia, serif";
+const body = "'Spectral', 'Source Serif 4', Georgia, serif";
 const mono = "'IBM Plex Mono', 'Courier New', monospace";
 
 /* ----------------------------- Validation -------------------------------- */
@@ -123,7 +128,7 @@ const TAG_COLORS: Record<string, { bg: string; b: string; t: string }> = {
 function Tag({ children, type }: { children: React.ReactNode; type?: string }) {
   const c = TAG_COLORS[type || "blue"] || TAG_COLORS.blue;
   return (
-    <span style={{ display: "inline-block" as const, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" as const, padding: "2px 8px", border: `0.5px solid ${c.b}`, background: c.bg, color: c.t, fontFamily: body }}>
+    <span style={{ display: "inline-block" as const, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase" as const, fontVariant: "small-caps" as const, padding: "3px 9px", border: `1px solid ${c.b}`, background: c.bg, color: c.t, fontFamily: body, fontWeight: 500 }}>
       {children}
     </span>
   );
@@ -132,7 +137,7 @@ function Tag({ children, type }: { children: React.ReactNode; type?: string }) {
 const FB_COLORS: Record<string, { bg: string; b: string; t: string }> = {
   correct: { bg: G.green50, b: G.greenBorder, t: G.greenText },
   wrong: { bg: G.red50, b: G.redBorder, t: G.redText },
-  info: { bg: "#f5f2eb", b: "#d0c8b0", t: "#5a5040" },
+  info: { bg: "#EDE6D8", b: "#D9D0C4", t: "#5A534D" },
   danger: { bg: G.amber50, b: G.amberBorder, t: G.amberText },
   partial: { bg: G.blue50, b: G.blueBorder, t: G.blueText },
 };
@@ -141,7 +146,7 @@ function Feedback({ type, title, children }: { type: string; title?: string; chi
   const c = FB_COLORS[type] || FB_COLORS.info;
   return (
     <div style={{ background: c.bg, border: `0.5px solid ${c.b}`, color: c.t, padding: "1rem 1.25rem", marginTop: 12, fontFamily: body, fontSize: 13, lineHeight: 1.75, fontWeight: 300 }}>
-      {title && <div style={{ fontFamily: serif, fontSize: 15, fontWeight: 400, marginBottom: 4 }}>{title}</div>}
+      {title && <div style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 4 }}>{title}</div>}
       {children}
     </div>
   );
@@ -164,10 +169,10 @@ function Btn({ children, onClick, disabled, kind }: { children: React.ReactNode;
   return (
     <button onClick={onClick} disabled={disabled}
       style={{
-        background: ghost ? "transparent" : disabled ? G.border : G.inkMid,
-        color: ghost ? G.muted : disabled ? G.muted : G.cream,
-        border: ghost ? `0.5px solid ${G.border}` : "none",
-        padding: "0.65rem 1.5rem", fontFamily: body, fontSize: 12, letterSpacing: "0.12em",
+        background: ghost ? "transparent" : disabled ? G.borderLight : G.btn,
+        color: ghost ? G.muted : disabled ? G.faint : G.cream,
+        border: ghost ? `1px solid ${G.border}` : `1px solid ${disabled ? G.borderLight : G.btn}`,
+        padding: "0.7rem 1.6rem", fontFamily: body, fontSize: 12, letterSpacing: "0.2em", fontWeight: 500,
         textTransform: "uppercase" as const, cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap" as const,
       }}>
       {children}
@@ -587,10 +592,10 @@ function ModuleRunner({ mod, onExit, onNext }: { mod: ModuleT; onExit: () => voi
       <button onClick={onExit} style={{ background: "none", border: "none", color: G.muted, fontFamily: body, fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase" as const, cursor: "pointer", marginBottom: 18 }}>← Modüller</button>
 
       <div style={{ borderBottom: `1.5px solid ${G.border}`, paddingBottom: "1.25rem", marginBottom: "1.25rem" }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.18em", color: G.faint, textTransform: "uppercase" as const, marginBottom: 6, fontFamily: body, fontWeight: 300 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.24em", color: G.accent, textTransform: "uppercase" as const, fontVariant: "small-caps" as const, marginBottom: 8, fontFamily: body, fontWeight: 500 }}>
           Modül {mod.id} · {mod.topic}
         </div>
-        <div style={{ fontFamily: serif, fontSize: 26, color: G.ink, lineHeight: 1.2 }}>{mod.title}</div>
+        <div style={{ fontFamily: serif, fontSize: 34, fontWeight: 700, letterSpacing: "-0.02em", color: G.ink, lineHeight: 1.0 }}>{mod.title}</div>
       </div>
 
       {/* Progress: 25 adım, yatay kaydırılabilir */}
@@ -601,11 +606,11 @@ function ModuleRunner({ mod, onExit, onNext }: { mod: ModuleT; onExit: () => voi
         ))}
       </div>
 
-      <div style={{ background: G.white, border: `0.5px solid ${G.border}`, padding: "1.75rem", marginBottom: "1rem" }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" as const, color: G.faint, marginBottom: "0.4rem", fontFamily: body, fontWeight: 300 }}>
+      <div style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: "0 1px 2px rgba(0,0,0,0.03)", padding: "1.9rem", marginBottom: "1rem" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase" as const, fontVariant: "small-caps" as const, color: G.accent, marginBottom: "0.5rem", fontFamily: body, fontWeight: 500 }}>
           Adım {i + 1} / {total} — {step.label || step.type}
         </div>
-        {step.title && <div style={{ fontFamily: serif, fontSize: 20, color: G.ink, marginBottom: "1rem", lineHeight: 1.3 }}>{step.title}</div>}
+        {step.title && <div style={{ fontFamily: serif, fontSize: 27, fontWeight: 700, letterSpacing: "-0.015em", color: G.ink, marginBottom: "1rem", lineHeight: 1.1 }}>{step.title}</div>}
         <StepRenderer key={`m${mod.id}-s${i}`} step={step} ctx={ctx} />
       </div>
 
@@ -636,29 +641,30 @@ export default function Academy() {
     <div style={{ minHeight: "100vh", background: G.cream, fontFamily: body, padding: "3rem 1.5rem" }}>
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <div style={{ borderBottom: `1.5px solid ${G.border}`, paddingBottom: "1.5rem", marginBottom: "2.5rem" }}>
-          <div style={{ fontSize: 11, letterSpacing: "0.2em", color: G.faint, textTransform: "uppercase" as const, marginBottom: 8, fontFamily: body, fontWeight: 300 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.28em", color: G.accent, textTransform: "uppercase" as const, fontVariant: "small-caps" as const, marginBottom: 18, fontFamily: body, fontWeight: 500 }}>
             İnteraktif Güvenlik Akademisi · OWASP LLM01
           </div>
-          <div style={{ fontFamily: serif, fontSize: 38, color: G.ink, lineHeight: 1.15, marginBottom: 12 }}>
-            IoT &amp; LLM Güvenliği: <em style={{ color: G.muted }}>Prompt Injection</em>
-          </div>
-          <div style={{ fontFamily: body, fontSize: 15, color: G.muted, lineHeight: 1.7, fontWeight: 300, maxWidth: 640 }}>
+          <h1 style={{ fontFamily: serif, fontSize: "clamp(40px, 7vw, 76px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 0.92, color: G.ink, textTransform: "uppercase" as const, margin: "0 0 18px" }}>
+            IoT &amp; LLM Güvenliği:<br />Prompt Injection
+          </h1>
+          <div style={{ fontFamily: body, fontSize: 16, color: G.muted, lineHeight: 1.75, fontWeight: 400, maxWidth: 620 }}>
             Yapay zeka ajanlarına yönelik prompt injection saldırılarını akıllı ev bağlamında, adım adım ve elinizi kirleterek öğrenin. Beş modül, her biri 25 adım. Bir modül seçin.
           </div>
-          <div style={{ fontSize: 11, color: "#b0a690", fontFamily: body, marginTop: 10 }}>Deniz Tektek &amp; Fevzi Ege Yurtsevenler · 2026</div>
+          <div style={{ fontSize: 12, color: G.faint, fontFamily: body, marginTop: 14, fontStyle: "italic" as const }}>Deniz Tektek &amp; Fevzi Ege Yurtsevenler · 2026</div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(290px,1fr))", gap: 16 }}>
           {MODULES.map((m) => (
-            <div key={m.id} style={{ background: G.white, border: `0.5px solid ${G.border}`, padding: 22, display: "flex", flexDirection: "column" as const }}>
+            <div key={m.id} style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: "0 1px 2px rgba(0,0,0,0.03)", padding: 24, display: "flex", flexDirection: "column" as const }}>
               <div style={{ display: "flex", justifyContent: "space-between" as const, alignItems: "baseline" as const }}>
-                <span style={{ fontFamily: serif, fontSize: 26, color: G.border }}>0{m.id}</span>
-                <span style={{ fontFamily: body, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: G.faint }}>{m.level} · {m.minutes}</span>
+                <span style={{ fontFamily: serif, fontSize: 52, fontWeight: 700, lineHeight: 0.9, color: G.accent }}>0{m.id}</span>
+                <span style={{ fontFamily: body, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" as const, fontVariant: "small-caps" as const, color: G.faint }}>{m.level} · {m.minutes}</span>
               </div>
-              <div style={{ fontFamily: serif, fontSize: 20, color: G.ink, margin: "8px 0 4px", lineHeight: 1.25 }}>{m.title}</div>
-              <div style={{ marginBottom: 10 }}><Tag type="amber">{m.topic}</Tag></div>
-              <div style={{ fontFamily: body, fontSize: 13, color: G.muted, lineHeight: 1.65, fontWeight: 300, flex: 1 }}>{m.desc}</div>
-              <div style={{ fontSize: 11, color: G.faint, fontFamily: mono, margin: "12px 0" }}>{m.steps.length} adım</div>
+              <div style={{ borderTop: `1px solid ${G.borderLight}`, margin: "14px 0 10px" }} />
+              <div style={{ fontFamily: serif, fontSize: 25, fontWeight: 700, letterSpacing: "-0.01em", color: G.ink, margin: "0 0 8px", lineHeight: 1.12 }}>{m.title}</div>
+              <div style={{ marginBottom: 12 }}><Tag type="amber">{m.topic}</Tag></div>
+              <div style={{ fontFamily: body, fontSize: 14, color: G.muted, lineHeight: 1.7, fontWeight: 400, flex: 1 }}>{m.desc}</div>
+              <div style={{ fontSize: 11, color: G.faint, fontFamily: mono, margin: "14px 0", letterSpacing: "0.05em" }}>{m.steps.length} adım</div>
               <Btn onClick={() => setActive(m.id)}>Modülü Başlat →</Btn>
             </div>
           ))}
