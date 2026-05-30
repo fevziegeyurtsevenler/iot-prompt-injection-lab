@@ -7,18 +7,22 @@
 
 * {
   box-sizing: border-box;
+  /* XSS guvenligi: kullanici girdisi HER ZAMAN React {textContent} olarak
+     render edilir; dangerouslySetInnerHTML / innerHTML hicbir yerde kullanilmaz. */
 }
 
 body {
   background-color: var(--background);
-  /* Cok hafif arsiv kagidi greni — dikkat dagitmayan dokunus */
+  /* Cok hafif arsiv kagidi greni — dikkat dagitmayan editoryel dokunus */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
   color: var(--foreground);
   margin: 0;
   padding: 0;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
-input {
+input, button, textarea {
   font-family: inherit;
 }
 
@@ -30,12 +34,12 @@ button:hover:not(:disabled) {
   opacity: 0.85;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
+/* Kullanici girdisi gosterim alanlari — yalniz metin, satir kirilmali */
+.user-content {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #D9D0C4;
-}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D9D0C4; }
