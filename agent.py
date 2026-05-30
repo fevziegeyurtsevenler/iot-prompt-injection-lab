@@ -40,9 +40,20 @@ class ActionRecord:
 class AgentResult:
     final_text: str
     actions: list = field(default_factory=list)
-    trace: list = field(default_factory=list)
+    trace: list = field(default_factory=list)    # insan-okunur string'ler (demo.py)
+    events: list = field(default_factory=list)    # yapilandirilmis JSON adimlar (API/arayuz)
     before: dict = field(default_factory=dict)
     after: dict = field(default_factory=dict)
+
+    def _event(self, etype, tool=None, result="", explanation="", sensitive=False):
+        self.events.append({
+            "step": len(self.events) + 1,
+            "type": etype,            # read | decode | reasoning | attack | blocked | defense
+            "tool": tool,
+            "result": result,
+            "explanation": explanation,
+            "sensitive": sensitive,
+        })
 
     @property
     def executed_sensitive(self) -> list:
@@ -93,6 +104,9 @@ class Agent:
                 res.actions.append(ActionRecord(decision.name, True, True, "",
                                                 "HITL: insan onayi reddedildi (kullanici istemedi)"))
                 res.trace.append("  [ENGELLENDI] {} -> insan onayi reddedildi".format(decision.name))
+                res._event("blocked", tool=decision.name, sensitive=True,
+                           result="Insan onayi reddedildi",
+                           explanation="Hassas aksiyon, kullanici acikca istemedigi icin HITL tarafindan durduruldu.")
                 history.append({"tool": decision.name, "result": "[ENGELLENDI: kullanici onayi yok]"})
                 continue
 
@@ -107,16 +121,28 @@ class Agent:
                     shown = redacted
                     res.trace.append(
                         "  [SAVUNMA] {} ciktisinda enjeksiyon tespit edildi -> redakte".format(decision.name))
+                    res._event("defense", tool=decision.name, result="Supheli icerik redakte edildi",
+                               explanation="Input scanner okunan veride bilinen enjeksiyon kalibi buldu ve redakte etti.")
 
             history.append({"tool": decision.name, "result": shown})
             res.actions.append(ActionRecord(decision.name, tool.sensitive, False, result, decision.reason))
 
             if tool.category == "read":
                 res.trace.append("  [okuma] {}".format(decision.name))
+                res._event("read", tool=decision.name, result=shown,
+                           explanation="Ajan, gorevi icin GUVENILMEZ veri okuyor.")
+                if decision.name == "analyze_camera_feed" and "[LSB_DECODED_PAYLOAD]" in result:
+                    hidden = result.split("[LSB_DECODED_PAYLOAD]:", 1)[-1].strip()
+                    res._event("decode", tool=decision.name, result=hidden,
+                               explanation="Goruntunun piksellerine LSB ile gizlenmis komut desifre edildi.")
             elif tool.sensitive:
                 res.trace.append("  [HASSAS] {} -> {}".format(decision.name, result))
+                res._event("attack", tool=decision.name, result=result, sensitive=True,
+                           explanation="Ajan, guvenilmez veriden gelen komutu HASSAS aksiyon olarak uyguladi.")
             else:
                 res.trace.append("  [aksiyon] {} -> {}".format(decision.name, result))
+                res._event("action", tool=decision.name, result=result,
+                           explanation="Ajan hassas olmayan bir aksiyon calistirdi.")
 
         res.after = self.home.security_state()
         return res
