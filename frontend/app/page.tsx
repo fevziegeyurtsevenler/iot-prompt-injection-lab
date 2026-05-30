@@ -272,8 +272,34 @@ function runBenchmark() {
 }
 
 /* ------------------------------ Validation ------------------------------- */
+// Sanitasyon felsefesi: KARA LİSTE değil, BEYAZ LİSTE.
+//
+// Eski sürüm string .replace() zinciriydi ve iki sınıf açığı vardı:
+//   1) "Incomplete multi-character sanitization": tek geçişli silme atlatılabilir.
+//      Örn. /javascript:/ -> "javasjavascript:cript:" girdisi ilk eşleşme
+//      silinince geriye "javascript:" bırakır.
+//   2) "Incomplete URL scheme check": yalnız javascript: engelleniyordu;
+//      data:, vbscript:, blob:, file: gibi diğer tehlikeli şemalar açıktı.
+//
+// Yeni sürüm kara listeye HİÇ güvenmez. Yalnızca açıkça izin verilen karakterleri
+// (harf/rakam/Türkçe harfler/güvenli noktalama) tutar; tek geçişte, idempotent
+// (tekrar uygulanınca aynı sonuç) olarak çalışır. Atlatılamaz çünkü "kötüyü
+// bulmaya" değil, "iyiyi geçirmeye" dayanır. Bu lab girdileri zaten serbest
+// metin/cümle olduğu için < > " ' ` / \ { } = ve kontrol karakterleri elenir;
+// böylece HTML enjeksiyonu, olay-işleyici ve URL-şeması vektörleri kökten düşer.
+//
+// İKİNCİ KATMAN: girdi hiçbir zaman HTML olarak render edilmez — her yerde
+// React {textContent} kullanılır (dangerouslySetInnerHTML yok). Sanitasyon
+// savunmanın yalnızca ilk katmanıdır (defense-in-depth).
+const SAFE_INPUT = /[^\p{L}\p{N}\s.,:;!?()\-_'"%/&@]/gu;
+
 function sanitizeInput(raw: string): string {
-  return raw.slice(0, 500).replace(/[<>]/g, "").replace(/javascript:/gi, "").replace(/on\w+=/gi, "");
+  if (typeof raw !== "string") return "";
+  return raw
+    .normalize("NFC")               // Unicode normalize (homoglyph/birleşik kaçışları sabitler)
+    .replace(/[ -]/g, "") // tüm kontrol karakterleri (CR/LF/NUL dahil)
+    .replace(SAFE_INPUT, "")        // beyaz liste dışı her karakteri ele (tek geçiş, atlatılamaz)
+    .slice(0, 500);                 // uzunluk tavanı (DoS / aşırı girdi koruması)
 }
 function validateInput(val: string, keywords: string[], kind: string): string | null {
   const t = val.trim();

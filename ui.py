@@ -18,10 +18,13 @@ _ENABLED = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
 def _wrap(code: str):
+    # Renk kapaliyken (tty disi / NO_COLOR) metni oldugu gibi str'e cevirir.
+    # `lambda s: str(s)` gereksizdi (CodeQL: Unnecessary lambda); `str` zaten
+    # tek argumanli cagrilabilir bir nesne, dogrudan dondurulur.
     if _ENABLED:
         seq, rst = "\033[" + code + "m", "\033[0m"
         return lambda s: seq + str(s) + rst
-    return lambda s: str(s)
+    return str
 
 
 bold     = _wrap("1")
